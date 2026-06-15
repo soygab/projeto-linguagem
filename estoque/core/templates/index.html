@@ -1,5 +1,21 @@
 {% extends 'base.html' %}
 
 {% block content %}
-  {{ mensagem }}
+
+<h2>Bem-vindo ao Sistema de Estoque</h2>
+
+<p>Selecione uma opção:</p>
+
+<a class="btn" href="{% url 'produto:list_produto' %}">
+    Produtos
+</a>
+
+<a class="btn" href="{% url 'entrada:list_entrada' %}">
+    Entradas
+</a>
+
+<a class="btn" href="{% url 'saida:list_saida' %}">
+    Saídas
+</a>
+
 {% endblock %}
