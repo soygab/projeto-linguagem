@@ -24,28 +24,37 @@ def new_saida(request):
 
         if form.is_valid():
 
-            form.save(commit=False)
+            produto = form.cleaned_data['produto']
+            quantidade = form.cleaned_data['quantidade']
 
-            # PQT = Produto Quantidade
-            form.cleaned_data['produto'].quantidade \
-            = form.cleaned_data['produto'].quantidade \
-            - form.cleaned_data['quantidade']
+            if quantidade > produto.quantidade:
 
-            form.cleaned_data['produto'].save_base()
+                form.add_error(
+                    'quantidade',
+                    f'Estoque insuficiente. Disponível: {produto.quantidade}'
+                )
 
-            form.save()
+            else:
 
-        return redirect('saida:list_saida')
+                form.save(commit=False)
 
-    else:
+                produto.quantidade = (
+                    produto.quantidade - quantidade
+                )
 
-        template_name = 'form_saida.html'
+                produto.save_base()
 
-        context = {
-            'form': SaidaForm(),
-        }
+                form.save()
 
-        return render(request, template_name, context)
+                return redirect('saida:list_saida')
+
+    template_name = 'form_saida.html'
+
+    context = {
+        'form': form if request.method == 'POST' else SaidaForm(),
+    }
+
+    return render(request, template_name, context)
 
 
 def update_saida(request, pk):
@@ -54,26 +63,32 @@ def update_saida(request, pk):
 
     if request.method == 'POST':
 
-        form = SaidaForm(request.POST, instance=saida)
+        form = SaidaForm(
+            request.POST,
+            instance=saida
+        )
 
         if form.is_valid():
 
-            # devolve quantidade antiga ao estoque
-            saida.produto.quantidade += saida.quantidade
+            produto = saida.produto
 
-            # verifica se há estoque suficiente
-            if form.cleaned_data['quantidade'] > saida.produto.quantidade:
+            # devolve a quantidade antiga
+            produto.quantidade += saida.quantidade
+
+            nova_quantidade = form.cleaned_data['quantidade']
+
+            if nova_quantidade > produto.quantidade:
 
                 form.add_error(
                     'quantidade',
-                    f'Estoque insuficiente. Disponível: {saida.produto.quantidade}'
+                    f'Estoque insuficiente. Disponível: {produto.quantidade}'
                 )
 
             else:
 
-                saida.produto.quantidade -= form.cleaned_data['quantidade']
+                produto.quantidade -= nova_quantidade
 
-                saida.produto.save()
+                produto.save_base()
 
                 form.save()
 
@@ -90,17 +105,20 @@ def update_saida(request, pk):
 
         return render(request, template_name, context)
 
-    return render(request, 'form_saida.html', {
-        'form': form,
-        'pk': pk,
-    })
+    return render(
+        request,
+        'form_saida.html',
+        {
+            'form': form,
+            'pk': pk,
+        }
+    )
 
 
 def delete_saida(request, pk):
 
     saida = Saidas.objects.get(pk=pk)
 
-    # devolve ao estoque
     saida.produto.quantidade = (
         saida.produto.quantidade +
         saida.quantidade
